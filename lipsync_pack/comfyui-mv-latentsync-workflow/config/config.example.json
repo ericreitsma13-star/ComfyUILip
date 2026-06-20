@@ -1,0 +1,78 @@
+{
+  "_comment": "Copy to config.json and edit. LatentSync MV pipeline config.",
+
+  "comfyui": {
+    "url": "http://127.0.0.1:8188",
+    "input_dir": "/path/to/ComfyUI/input",
+    "output_dir": "/path/to/ComfyUI/output"
+  },
+
+  "workflows": {
+    "base_singer_ltx": "workflows/01_base_singer_LTX_IPAdapter_api.json",
+    "base_singer_wan": "workflows/02_base_singer_Wan_IPAdapter_api.json",
+    "broll_ltx":       "workflows/03_broll_render_LTX_api.json",
+    "broll_wan":       "workflows/04_broll_render_Wan_api.json",
+    "latentsync":      "workflows/05_latentsync_apply_api.json",
+    "postfx_singer":   "workflows/06_face_restore_postfx_api.json",
+    "postfx_broll":    "workflows/07_standard_postfx_api.json"
+  },
+
+  "llm": {
+    "provider": "zai",
+    "model": "glm-4v-plus",
+    "send_images": true,
+    "temperature": 0.8,
+    "max_tokens": 10000
+  },
+
+  "vocal_isolation": {
+    "model": "htdemucs",
+    "device": "cuda",
+    "shifts": 1,
+    "save_stems": false
+  },
+
+  "render": {
+    "use_postfx": true,
+    "seed_offset": 0,
+    "poll_interval_sec": 3.0,
+    "per_job_timeout_sec": 1800
+  },
+
+  "assemble": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 48,
+    "title": "Untitled",
+    "artist": "Unknown Artist",
+    "render_social_variants": true,
+    "srt_path": null
+  },
+
+  "models": {
+    "_comment_latentsync": "LatentSync + IP-Adapter + CodeFormer",
+    "latentsync_model": "models/latentsync/latentsync_1.5.safetensors",
+    "ipadapter_faceid": "models/ipadapter/ip-adapter-faceid-plusv2_sdxl.bin",
+    "clip_vision": "models/clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
+    "codeformer": "models/facerestore_models/codeformer.pth",
+
+    "_comment_broll": "B-roll models (LTX + Wan)",
+    "ltx_checkpoint": "models/checkpoints/ltx-video-2b-v0.9.1.safetensors",
+    "ltx_vae": "models/vae/ltx-video-vae.safetensors",
+    "wan_unet": "models/unet/wan2.1-i2v-1.3B-480p-Q5_K_M.gguf",
+    "wan_clip": "models/clip/umt5_xxl_fp8.safetensors",
+    "wan_vae": "models/vae/wan_2.1_vae.safetensors",
+
+    "_comment_postfx": "Post-FX models",
+    "upscale_model": "models/upscale_models/4x-UltraSharp.pth",
+    "rife_model": "models/rife/rife47.pth",
+    "lut_file": "models/luts/cinematic_bleach_bypass.cube"
+  },
+
+  "comfyui_launch_args": [
+    "--enable-cors-header",
+    "--lowvram",
+    "--use-pytorch-cross-attention",
+    "--cache-none"
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "_comment": "Copy this file to config.json and edit the values to match your setup. All scripts read from config.json if it exists, else fall back to defaults / CLI args.",
+
+  "comfyui": {
+    "url": "http://127.0.0.1:8188",
+    "input_dir": "/path/to/ComfyUI/input",
+    "output_dir": "/path/to/ComfyUI/output"
+  },
+
+  "workflows": {
+    "ltx":    "workflows/01_scene_render_LTX_api.json",
+    "wan":    "workflows/02_scene_render_Wan_api.json",
+    "postfx": "workflows/03_post_fx_pipeline_api.json"
+  },
+
+  "llm": {
+    "provider": "zai",
+    "model": "glm-4v-plus",
+    "send_images": true,
+    "temperature": 0.8,
+    "max_tokens": 8000
+  },
+
+  "render": {
+    "use_postfx": true,
+    "seed_offset": 0,
+    "poll_interval_sec": 3.0,
+    "per_job_timeout_sec": 1800,
+    "prefer_model": null
+  },
+
+  "assemble": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 48,
+    "title": "Untitled",
+    "artist": "Unknown Artist",
+    "render_social_variants": true,
+    "srt_path": null
+  },
+
+  "models": {
+    "_comment_ltx": "LTX-Video model files (place under ComfyUI/models/...)",
+    "ltx_checkpoint": "models/checkpoints/ltx-video-2b-v0.9.1.safetensors",
+    "ltx_vae": "models/vae/ltx-video-vae.safetensors",
+
+    "_comment_wan": "Wan 2.1 model files",
+    "wan_unet": "models/unet/wan2.1-i2v-1.3B-480p-Q5_K_M.gguf",
+    "wan_clip": "models/clip/umt5_xxl_fp8.safetensors",
+    "wan_vae": "models/vae/wan_2.1_vae.safetensors",
+
+    "_comment_postfx": "Post-FX model files",
+    "upscale_model": "models/upscale_models/4x-UltraSharp.pth",
+    "rife_model": "models/rife/rife47.pth",
+    "lut_file": "models/luts/cinematic_bleach_bypass.cube"
+  },
+
+  "comfyui_launch_args": [
+    "--enable-cors-header",
+    "--lowvram",
+    "--use-pytorch-cross-attention",
+    "--cache-none"
+  ]
+}

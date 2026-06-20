@@ -1,0 +1,160 @@
+{
+  "1": {
+    "inputs": {
+      "video": "broll_wan_00001.mp4",
+      "force_rate": 0,
+      "custom_width": null,
+      "custom_height": null,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": null
+    },
+    "class_type": "VHS_LoadVideo",
+    "_meta": {
+      "title": "Load B-roll Video"
+    }
+  },
+  "2": {
+    "inputs": {
+      "images": [
+        "1",
+        0
+      ],
+      "model_name": "rife47.pth",
+      "source_fps": 25.0,
+      "target_fps": 48.0,
+      "scale": 1.0
+    },
+    "class_type": "RIFEInterpolation",
+    "_meta": {
+      "title": "RIFE Frame Interpolation"
+    }
+  },
+  "3": {
+    "inputs": {
+      "images": [
+        "2",
+        0
+      ],
+      "mode": "step_removal",
+      "channels": "L",
+      "step_strength": 1.5,
+      "smooth_strength": 1.0
+    },
+    "class_type": "DeflickerFrames",
+    "_meta": {
+      "title": "Deflicker"
+    }
+  },
+  "4": {
+    "inputs": {
+      "upscale_model": [
+        "5",
+        0
+      ],
+      "image": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image"
+    }
+  },
+  "5": {
+    "inputs": {
+      "model_name": "4x-UltraSharp.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model"
+    }
+  },
+  "6": {
+    "inputs": {
+      "image": [
+        "4",
+        0
+      ],
+      "megapixels": "lanczos",
+      "resolution_steps": 2048
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale to Target"
+    }
+  },
+  "7": {
+    "inputs": {
+      "image": [
+        "3",
+        0
+      ],
+      "lut_file": "cinematic_bleach_bypass.cube",
+      "strength": 0.9,
+      "gamma_correction": false,
+      "debug_logging": false,
+      "operation_mode": "normal"
+    },
+    "class_type": "OlmLUT",
+    "_meta": {
+      "title": "Apply LUT"
+    }
+  },
+  "8": {
+    "inputs": {
+      "image1": [
+        "7",
+        0
+      ],
+      "image2": [
+        "6",
+        0
+      ],
+      "blend_factor": 0.5,
+      "blend_mode": "normal"
+    },
+    "class_type": "Blend",
+    "_meta": {
+      "title": "Blend Upscaled + LUT"
+    }
+  },
+  "9": {
+    "inputs": {
+      "image": [
+        "8",
+        0
+      ],
+      "intensity": 0.15,
+      "scale": 35.0,
+      "saturation": 1.0
+    },
+    "class_type": "FilmGrain",
+    "_meta": {
+      "title": "Film Grain"
+    }
+  },
+  "10": {
+    "inputs": {
+      "images": [
+        "9",
+        0
+      ],
+      "frame_rate": 48,
+      "loop_count": 0,
+      "filename_prefix": "broll_final",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 16,
+      "save_metadata": true,
+      "pingpong": false,
+      "save_output": true
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Save Final Video"
+    }
+  }
+}

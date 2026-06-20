@@ -1,0 +1,257 @@
+{
+  "1": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": {
+      "unet_name": "LTX-2.3-22B-distilled-1.1-Q4_K_M.gguf"
+    },
+    "_meta": {
+      "title": "UNET GGUF"
+    }
+  },
+  "2": {
+    "class_type": "LTXAVTextEncoderLoader",
+    "inputs": {
+      "text_encoder": "gemma_3_12B_it_fp8_e4m3fn.safetensors",
+      "ckpt_name": "ltx-2-3-22b-text_encoder.safetensors",
+      "device": "default"
+    },
+    "_meta": {
+      "title": "Text Encoder"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "ltx-2.3-22b-distilled_video_vae.safetensors"
+    },
+    "_meta": {
+      "title": "Video VAE"
+    }
+  },
+  "5": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "lora_name": "ltx-2.3-22b-distilled-lora-384-1.1.safetensors",
+      "strength_model": 0.2
+    },
+    "_meta": {
+      "title": "Distilled LoRA"
+    }
+  },
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "broll_01.png"
+    },
+    "_meta": {
+      "title": "Reference Image"
+    }
+  },
+  "11": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "text": "cinematic B-roll shot"
+    },
+    "_meta": {
+      "title": "Positive"
+    }
+  },
+  "12": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "text": "blurry, low quality, watermark"
+    },
+    "_meta": {
+      "title": "Negative"
+    }
+  },
+  "20": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": {
+      "width": 768,
+      "height": 512,
+      "length": 49,
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "Empty Video Latent"
+    }
+  },
+  "21": {
+    "class_type": "LTXVImgToVideoInplace",
+    "inputs": {
+      "vae": [
+        "3",
+        0
+      ],
+      "image": [
+        "10",
+        0
+      ],
+      "latent": [
+        "20",
+        0
+      ],
+      "strength": 0.5,
+      "bypass": false
+    },
+    "_meta": {
+      "title": "I2V Conditioning"
+    }
+  },
+  "30": {
+    "class_type": "LTXVConditioning",
+    "inputs": {
+      "positive": [
+        "11",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "frame_rate": 24.0
+    },
+    "_meta": {
+      "title": "Frame Rate"
+    }
+  },
+  "40": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 42
+    },
+    "_meta": {
+      "title": "Noise"
+    }
+  },
+  "41": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler_ancestral_cfg_pp"
+    },
+    "_meta": {
+      "title": "Sampler"
+    }
+  },
+  "42": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "scheduler": "normal",
+      "steps": 8,
+      "denoise": 1.0
+    },
+    "_meta": {
+      "title": "Sigmas"
+    }
+  },
+  "43": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "40",
+        0
+      ],
+      "guider": [
+        "44",
+        0
+      ],
+      "sampler": [
+        "41",
+        0
+      ],
+      "sigmas": [
+        "42",
+        0
+      ],
+      "latent_image": [
+        "21",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Sampler"
+    }
+  },
+  "44": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "positive": [
+        "30",
+        0
+      ],
+      "negative": [
+        "30",
+        1
+      ],
+      "cfg": 3.0
+    },
+    "_meta": {
+      "title": "CFG Guider"
+    }
+  },
+  "50": {
+    "class_type": "LTXVSpatioTemporalTiledVAEDecode",
+    "inputs": {
+      "vae": [
+        "3",
+        0
+      ],
+      "latents": [
+        "43",
+        0
+      ],
+      "spatial_tiles": 2,
+      "spatial_overlap": 2,
+      "temporal_tile_length": 16,
+      "temporal_overlap": 4,
+      "last_frame_fix": true,
+      "working_device": "auto",
+      "working_dtype": "auto"
+    },
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "60": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": [
+        "50",
+        0
+      ],
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "broll_ltx",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 16,
+      "save_metadata": true,
+      "pingpong": false,
+      "save_output": true
+    },
+    "_meta": {
+      "title": "Save Video"
+    }
+  }
+}

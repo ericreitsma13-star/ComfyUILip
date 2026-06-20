@@ -1,0 +1,248 @@
+{
+  "last_node_id": 25,
+  "last_link_id": 38,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "CheckpointLoaderSimple",
+      "pos": [80, 80],
+      "size": [320, 100],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {"name": "MODEL", "type": "MODEL", "links": [1], "slot_index": 0},
+        {"name": "CLIP", "type": "CLIP", "links": [2, 3], "slot_index": 1},
+        {"name": "VAE", "type": "VAE", "links": [4], "slot_index": 2}
+      ],
+      "properties": {"Node name for S&R": "CheckpointLoaderSimple"},
+      "widgets_values": ["ltx-video-2b-v0.9.1.safetensors"]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [80, 220],
+      "size": [320, 320],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [5], "slot_index": 0},
+        {"name": "MASK", "type": "MASK", "links": null, "slot_index": 1}
+      ],
+      "properties": {"Node name for S&R": "LoadImage"},
+      "widgets_values": ["reference_01.png", "image"]
+    },
+    {
+      "id": 3,
+      "type": "CLIPTextEncode",
+      "pos": [440, 80],
+      "size": [400, 120],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 2}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [6], "slot_index": 0}],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        "cinematic shot, dramatic rim lighting, shallow depth of field, anamorphic lens flare, film grain, 35mm, color graded, highly detailed, 8k"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "CLIPTextEncode",
+      "pos": [440, 220],
+      "size": [400, 120],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 3}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [7], "slot_index": 0}],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        "blurry, low quality, cartoon, anime, watermark, text, deformed, distorted, bad anatomy, extra limbs, jpeg artifacts, oversaturated, plastic skin"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "LTXImageToVideo",
+      "pos": [880, 80],
+      "size": [380, 320],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 1},
+        {"name": "positive", "type": "CONDITIONING", "link": 6},
+        {"name": "negative", "type": "CONDITIONING", "link": 7},
+        {"name": "vae", "type": "VAE", "link": 4},
+        {"name": "image", "type": "IMAGE", "link": 5}
+      ],
+      "outputs": [{"name": "LATENT", "type": "LATENT", "links": [8], "slot_index": 0}],
+      "properties": {"Node name for S&R": "LTXImageToVideo"},
+      "widgets_values": [
+        512,
+        512,
+        97,
+        25,
+        0.7,
+        30,
+        3.5,
+        1.0,
+        "fixed",
+        "faster",
+        42
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 6,
+      "type": "VAEDecode",
+      "pos": [1300, 80],
+      "size": [220, 100],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "samples", "type": "LATENT", "link": 8},
+        {"name": "vae", "type": "VAE", "link": 9}
+      ],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [10, 11], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VAEDecode"},
+      "widgets_values": ["sdxl"]
+    },
+    {
+      "id": 7,
+      "type": "VAELoader",
+      "pos": [880, 420],
+      "size": [320, 60],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [{"name": "VAE", "type": "VAE", "links": [9], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VAELoader"},
+      "widgets_values": ["ltx-video-vae.safetensors"]
+    },
+    {
+      "id": 8,
+      "type": "LUTApply",
+      "pos": [1560, 80],
+      "size": [240, 80],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [{"name": "image", "type": "IMAGE", "link": 10}],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [12], "slot_index": 0}],
+      "properties": {"Node name for S&R": "LUTApply"},
+      "widgets_values": ["cinematic_tequila_sunrise.cube", 0.85]
+    },
+    {
+      "id": 9,
+      "type": "VHS_VideoCombine",
+      "pos": [1840, 80],
+      "size": [340, 280],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 12},
+        {"name": "audio", "type": "AUDIO", "link": null, "shape": 7}
+      ],
+      "outputs": [{"name": "VHS_FILENAMES", "type": "VHS_FILENAMES", "links": null, "slot_index": 0}],
+      "properties": {"Node name for S&R": "VHS_VideoCombine"},
+      "widgets_values": {
+        "frame_rate": 24,
+        "loop_count": 0,
+        "filename_prefix": "scene_ltx",
+        "format": "video/h264-mp4",
+        "pix_fmt": "yuv420p",
+        "crf": 18,
+        "save_metadata": true,
+        "pingpong": false,
+        "save_output": true
+      }
+    },
+    {
+      "id": 10,
+      "type": "Note",
+      "pos": [80, 600],
+      "size": [320, 260],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "properties": {"Node name for S&R": "Note"},
+      "widgets_values": [
+        "LTX-VIDEO SCENE RENDERER (LTX 2.3 / 0.9.1)\n========================================\n\nUSE THIS WORKFLOW FOR: fast prototyping, scene iteration, motion tests\nEXPECTED SPEED: ~30-45s per 5s clip at 512x512 on 4090 mobile (16GB)\n\nWIDGET NOTES:\n- widgets_values[0..3] on LTXImageToVideo = width, height, length, batch_size\n  (length 97 frames @ 24fps ≈ 4 seconds)\n- widgets_values[4] = context_schedule (0.7 = balanced motion)\n- widgets_values[5] = steps (25-30 for quality)\n- widgets_values[6] = cfg (3.0-4.0 typical; lower = more motion, higher = more faithful to ref)\n- widgets_values[7] = sampler_sigma_shift (1.0 default)\n- widgets_values[8] = schedule (fixed / exponential / noise)\n- widgets_values[9] = stp (faster / fast / normal)\n- widgets_values[10] = seed (fixed for reproducibility)\n\nFOR 16GB VRAM:\n  512x512x97 frames  → ~9GB peak, safe\n  768x432x97 frames  → ~13GB peak, OK\n  1024x576x97 frames → ~17GB, will OOM. Use Wan 1.3B or downscale.\n\nOVERDRIVE TO WAN:\n  When you find a shot you like, re-render with workflows/02_scene_render_Wan.json\n  for sharper photoreal output."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 11,
+      "type": "SaveImage",
+      "pos": [1560, 220],
+      "size": [240, 100],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [{"name": "images", "type": "IMAGE", "link": 11}],
+      "properties": {"Node name for S&R": "SaveImage"},
+      "widgets_values": ["ltx_firstframe"]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 5, 0, "MODEL"],
+    [2, 1, 1, 3, 0, "CLIP"],
+    [3, 1, 1, 4, 0, "CLIP"],
+    [4, 1, 2, 5, 3, "VAE"],
+    [5, 2, 0, 5, 4, "IMAGE"],
+    [6, 3, 0, 5, 1, "CONDITIONING"],
+    [7, 4, 0, 5, 2, "CONDITIONING"],
+    [8, 5, 0, 6, 0, "LATENT"],
+    [9, 7, 0, 6, 1, "VAE"],
+    [10, 6, 0, 8, 0, "IMAGE"],
+    [11, 6, 0, 11, 0, "IMAGE"],
+    [12, 8, 0, 9, 0, "IMAGE"]
+  ],
+  "groups": [
+    {
+      "title": "Inputs: model + reference image + prompts",
+      "bounding": [60, 40, 770, 510],
+      "color": "#3f789e",
+      "font_size": 24
+    },
+    {
+      "title": "LTX-Video I2V core",
+      "bounding": [860, 40, 410, 460],
+      "color": "#88A",
+      "font_size": 24
+    },
+    {
+      "title": "Decode + grade + output",
+      "bounding": [1280, 40, 920, 320],
+      "color": "#a33",
+      "font_size": 24
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {"scale": 0.85}
+  },
+  "version": 0.4,
+  "metadata": {
+    "title": "Scene Renderer - LTX-Video 2.3 (Cinematic I2V)",
+    "author": "comfyui-mv-workflow pack",
+    "description": "Fast prototyping renderer. Use this for iterating on shot framing and motion before final Wan render.",
+    "required_custom_nodes": [
+      "ComfyUI-LTXVideo (Lightricks)",
+      "ComfyUI-VideoHelperSuite (VHS)",
+      "ComfyUI-KJNodes (LUTApply)"
+    ],
+    "required_models": [
+      "models/checkpoints/ltx-video-2b-v0.9.1.safetensors",
+      "models/vae/ltx-video-vae.safetensors",
+      "models/luts/cinematic_tequila_sunrise.cube"
+    ]
+  }
+}

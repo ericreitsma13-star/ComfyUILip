@@ -1,0 +1,125 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "singer_ref_01.png"
+    },
+    "_meta": {
+      "title": "LoadImage"
+    }
+  },
+  "2": {
+    "class_type": "VHS_LoadAudio",
+    "inputs": {
+      "audio_file": "vocal_segment_verse1.wav",
+      "seek_seconds": null,
+      "duration": null
+    },
+    "_meta": {
+      "title": "VHS_LoadAudio"
+    }
+  },
+  "3": {
+    "class_type": "SonicModelLoader",
+    "inputs": {},
+    "_meta": {
+      "title": "SonicModelLoader"
+    }
+  },
+  "4": {
+    "class_type": "SonicSampler",
+    "inputs": {
+      "sonic_model": [
+        "3",
+        0
+      ],
+      "vae": [
+        "3",
+        1
+      ],
+      "reference_image": [
+        "1",
+        0
+      ],
+      "audio": [
+        "2",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "SonicSampler"
+    }
+  },
+  "5": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "4",
+        0
+      ],
+      "vae": [
+        "6",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "VAEDecode"
+    }
+  },
+  "6": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "sonic_vae.safetensors"
+    },
+    "_meta": {
+      "title": "VAELoader"
+    }
+  },
+  "7": {
+    "class_type": "LUTApply",
+    "inputs": {
+      "image": [
+        "5",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "LUTApply"
+    }
+  },
+  "8": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": [
+        "7",
+        0
+      ],
+      "frame_rate": 25,
+      "loop_count": 0,
+      "filename_prefix": "lipsync_sonic",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true,
+      "audio": [
+        "2",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "VHS_VideoCombine"
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "5",
+        0
+      ],
+      "filename_prefix": "sonic_firstframe"
+    },
+    "_meta": {
+      "title": "SaveImage"
+    }
+  }
+}

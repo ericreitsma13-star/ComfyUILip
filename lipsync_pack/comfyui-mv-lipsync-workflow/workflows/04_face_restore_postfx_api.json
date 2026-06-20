@@ -1,0 +1,150 @@
+{
+  "1": {
+    "class_type": "VHS_LoadVideo",
+    "inputs": {
+      "video": "lipsync_sonic_00001.mp4",
+      "force_rate": 0,
+      "custom_width": null,
+      "custom_height": null,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": null
+    },
+    "_meta": {
+      "title": "VHS_LoadVideo"
+    }
+  },
+  "2": {
+    "class_type": "FaceRestoreCodeFormer",
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "FaceRestoreCodeFormer"
+    }
+  },
+  "3": {
+    "class_type": "RIFE VFI",
+    "inputs": {
+      "frames": [
+        "2",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "RIFE VFI"
+    }
+  },
+  "4": {
+    "class_type": "Deflicker",
+    "inputs": {
+      "image": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Deflicker"
+    }
+  },
+  "5": {
+    "class_type": "LUTApply",
+    "inputs": {
+      "image": [
+        "4",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "LUTApply"
+    }
+  },
+  "6": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {
+      "upscale_model": [
+        "7",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "ImageUpscaleWithModel"
+    }
+  },
+  "7": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {},
+    "_meta": {
+      "title": "UpscaleModelLoader"
+    }
+  },
+  "8": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "6",
+        0
+      ],
+      "megapixels": "lanczos",
+      "resolution_steps": 2048
+    },
+    "_meta": {
+      "title": "ImageScaleToTotalPixels"
+    }
+  },
+  "9": {
+    "class_type": "ImageBlend",
+    "inputs": {
+      "image1": [
+        "5",
+        0
+      ],
+      "image2": [
+        "8",
+        0
+      ],
+      "blend_factor": 50
+    },
+    "_meta": {
+      "title": "ImageBlend"
+    }
+  },
+  "10": {
+    "class_type": "FilmGrainAdvanced",
+    "inputs": {
+      "image": [
+        "9",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "FilmGrainAdvanced"
+    }
+  },
+  "11": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": [
+        "10",
+        0
+      ],
+      "frame_rate": 50,
+      "loop_count": 0,
+      "filename_prefix": "lipsync_final",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true,
+      "audio": [
+        "1",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "VHS_VideoCombine"
+    }
+  }
+}

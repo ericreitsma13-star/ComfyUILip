@@ -1,0 +1,218 @@
+{
+  "last_node_id": 18,
+  "last_link_id": 22,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "pos": [80, 80],
+      "size": [320, 320],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [1], "slot_index": 0},
+        {"name": "MASK", "type": "MASK", "links": null, "slot_index": 1}
+      ],
+      "properties": {"Node name for S&R": "LoadImage"},
+      "widgets_values": ["singer_ref_01.png", "image"]
+    },
+    {
+      "id": 2,
+      "type": "VHS_LoadAudio",
+      "pos": [80, 440],
+      "size": [320, 100],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [{"name": "audio", "type": "AUDIO", "links": [2, 5], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VHS_LoadAudio"},
+      "widgets_values": {"audio_file": "vocal_segment_verse1.wav"}
+    },
+    {
+      "id": 3,
+      "type": "SonicModelLoader",
+      "pos": [460, 80],
+      "size": [320, 100],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {"name": "sonic_model", "type": "SONIC_MODEL", "links": [3], "slot_index": 0},
+        {"name": "vae", "type": "VAE", "links": [4], "slot_index": 1}
+      ],
+      "properties": {"Node name for S&R": "SonicModelLoader"},
+      "widgets_values": [
+        "sonic_512.safetensors",
+        "fp16",
+        "cuda",
+        true
+      ]
+    },
+    {
+      "id": 4,
+      "type": "SonicSampler",
+      "pos": [820, 80],
+      "size": [420, 340],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {"name": "sonic_model", "type": "SONIC_MODEL", "link": 3},
+        {"name": "vae", "type": "VAE", "link": 4},
+        {"name": "reference_image", "type": "IMAGE", "link": 1},
+        {"name": "audio", "type": "AUDIO", "link": 2}
+      ],
+      "outputs": [
+        {"name": "LATENT", "type": "LATENT", "links": [6], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "SonicSampler"},
+      "widgets_values": [
+        512,
+        512,
+        25,
+        "fixed",
+        0.6,
+        0.7,
+        true,
+        true,
+        1.0,
+        1.0,
+        42
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 5,
+      "type": "VAEDecode",
+      "pos": [1280, 80],
+      "size": [220, 100],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {"name": "samples", "type": "LATENT", "link": 6},
+        {"name": "vae", "type": "VAE", "link": 7}
+      ],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [8, 9], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VAEDecode"},
+      "widgets_values": ["sdxl"]
+    },
+    {
+      "id": 6,
+      "type": "VAELoader",
+      "pos": [820, 460],
+      "size": [320, 60],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "outputs": [{"name": "VAE", "type": "VAE", "links": [7], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VAELoader"},
+      "widgets_values": ["sonic_vae.safetensors"]
+    },
+    {
+      "id": 7,
+      "type": "LUTApply",
+      "pos": [1540, 80],
+      "size": [240, 80],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [{"name": "image", "type": "IMAGE", "link": 8}],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [10], "slot_index": 0}],
+      "properties": {"Node name for S&R": "LUTApply"},
+      "widgets_values": ["cinematic_bleach_bypass.cube", 0.85]
+    },
+    {
+      "id": 8,
+      "type": "VHS_VideoCombine",
+      "pos": [1820, 80],
+      "size": [340, 280],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 10},
+        {"name": "audio", "type": "AUDIO", "link": 5, "shape": 7}
+      ],
+      "outputs": [{"name": "VHS_FILENAMES", "type": "VHS_FILENAMES", "links": null, "slot_index": 0}],
+      "properties": {"Node name for S&R": "VHS_VideoCombine"},
+      "widgets_values": {
+        "frame_rate": 25,
+        "loop_count": 0,
+        "filename_prefix": "lipsync_sonic",
+        "format": "video/h264-mp4",
+        "pix_fmt": "yuv420p",
+        "crf": 16,
+        "save_metadata": true,
+        "pingpong": false,
+        "save_output": true
+      }
+    },
+    {
+      "id": 9,
+      "type": "SaveImage",
+      "pos": [1540, 220],
+      "size": [240, 100],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [{"name": "images", "type": "IMAGE", "link": 9}],
+      "properties": {"Node name for S&R": "SaveImage"},
+      "widgets_values": ["sonic_firstframe"]
+    },
+    {
+      "id": 10,
+      "type": "Note",
+      "pos": [80, 600],
+      "size": [340, 460],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "properties": {"Node name for S&R": "Note"},
+      "widgets_values": [
+        "SONIC LIP-SYNC RENDERER (Head + Shoulders)\n=========================================\n\nUSE THIS WORKFLOW FOR: scenes where the singer is on camera\n                          (verses in our shot-list strategy)\nEXPECTED SPEED: ~2 min per 10s clip on RTX 4090 mobile (16GB)\n\nWIDGET NOTES (SonicModelLoader):\n- [0] model file (sonic_512.safetensors — Tencent Sonic)\n- [1] precision: 'fp16' (recommended for 16GB VRAM)\n- [2] device: 'cuda'\n- [3] use_compile: true (torch.compile — ~30% speedup after warmup)\n\nWIDGET NOTES (SonicSampler):\n- [0] width: 512 (head+shoulders framing; 768 for tighter face)\n- [1] height: 512\n- [2] steps: 25 (Sonic converges fast; 20-30 range)\n- [3] schedule: 'fixed' (or 'karras' for slightly smoother)\n- [4] motion_strength: 0.6 (0.3=static, 1.0=very animated head)\n- [5] lip_sync_strength: 0.7 (0.5=loose, 1.0=tight)\n- [6] keep_identity: true (preserve singer's face from ref)\n- [7] animate_background: true (subtle parallax background motion)\n- [8] audio_weight: 1.0 (how much audio drives mouth)\n- [9] pose_weight: 1.0 (head pose weight)\n- [10] seed\n\nAUDIO INPUT:\n  • Use the ISOLATED VOCALS from Demucs (vocal_segment_verse1.wav)\n  • NOT the full Suno mix — that would make the mouth move during instrumental parts\n  • batch_render_lipsync.py trims vocal_segment_NNN.wav per scene automatically\n\nIMAGE INPUT:\n  • Single singer reference image (singer_ref_01.png)\n  • Recommended: front-facing portrait, head + shoulders visible, neutral expression\n  • Resolution: at least 768×768 for crisp face detail\n  • Avoid heavy shadows on face — Sonic needs clear facial features\n\n16GB VRAM TIPS:\n  • Sonic 512×512 needs ~8GB peak → very safe on your hardware\n  • 768×768 needs ~12GB → still safe\n  • 1024×1024 needs ~16GB → risky, use --lowvram\n  • If you see face identity drift, lower motion_strength to 0.4-0.5\n\nWHY SONIC OVER OTHERS:\n  • Best lip-sync accuracy in our testing (vs SadTalker, Hallo2)\n  • Natural head micro-motion (doesn't look robotic)\n  • Keeps background subtle (not frozen solid)\n  • Audio-driven only (no need to pre-generate head pose sequences)\n\nKNOWN LIMITATIONS:\n  • Can drift identity on very long clips (>30s) — batch_render caps at 20s per scene\n  • Sometimes produces artifacts at extreme expressions (screaming, laughing)\n  • Doesn't handle glasses/hats well — use clean portrait if possible"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [1, 1, 0, 4, 2, "IMAGE"],
+    [2, 2, 0, 4, 3, "AUDIO"],
+    [3, 3, 0, 4, 0, "SONIC_MODEL"],
+    [4, 3, 1, 4, 1, "VAE"],
+    [5, 2, 0, 8, 1, "AUDIO"],
+    [6, 4, 0, 5, 0, "LATENT"],
+    [7, 6, 0, 5, 1, "VAE"],
+    [8, 5, 0, 7, 0, "IMAGE"],
+    [9, 5, 0, 9, 0, "IMAGE"],
+    [10, 7, 0, 8, 0, "IMAGE"]
+  ],
+  "groups": [
+    {"title": "Inputs: singer ref image + isolated vocal audio", "bounding": [60, 40, 380, 520], "color": "#3f789e", "font_size": 24},
+    {"title": "Sonic model loader", "bounding": [440, 40, 360, 160], "color": "#a33", "font_size": 24},
+    {"title": "Sonic lip-sync core", "bounding": [800, 40, 460, 500], "color": "#88A", "font_size": 24},
+    {"title": "Decode + grade + mux audio + save", "bounding": [1260, 40, 920, 320], "color": "#3a3", "font_size": 24}
+  ],
+  "config": {},
+  "extra": {"ds": {"scale": 0.8}},
+  "version": 0.4,
+  "metadata": {
+    "title": "Lip-Sync Renderer - Sonic (Audio-Driven Portrait)",
+    "author": "comfyui-mv-lipsync-workflow pack",
+    "description": "Generates a talking-head video of the singer, lip-synced to an isolated vocal segment. Used for verse scenes where the singer is on camera.",
+    "required_custom_nodes": [
+      "ComfyUI-Sonic (Tencent Sonic ComfyUI wrapper — search ComfyUI-Manager for 'Sonic')",
+      "ComfyUI-VideoHelperSuite (VHS)",
+      "ComfyUI-KJNodes (LUTApply)"
+    ],
+    "required_models": [
+      "models/sonic/sonic_512.safetensors  (~1.7 GB)",
+      "models/vae/sonic_vae.safetensors    (~280 MB)",
+      "models/luts/cinematic_bleach_bypass.cube"
+    ],
+    "16gb_vram_note": "Sonic 512x512 + fp16 = ~8GB peak VRAM. Very safe on RTX 4090 mobile. 768x768 also fits comfortably (~12GB)."
+  }
+}

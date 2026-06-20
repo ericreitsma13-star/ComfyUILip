@@ -1,0 +1,200 @@
+{
+  "last_node_id": 11,
+  "last_link_id": 14,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "CheckpointLoaderSimple",
+      "pos": [80, 80],
+      "size": [320, 100],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {"name": "MODEL", "type": "MODEL", "links": [1], "slot_index": 0},
+        {"name": "CLIP", "type": "CLIP", "links": [2, 3], "slot_index": 1},
+        {"name": "VAE", "type": "VAE", "links": [4], "slot_index": 2}
+      ],
+      "properties": {"Node name for S&R": "CheckpointLoaderSimple"},
+      "widgets_values": ["ltx-video-2b-v0.9.1.safetensors"]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [80, 220],
+      "size": [320, 320],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [5], "slot_index": 0},
+        {"name": "MASK", "type": "MASK", "links": null, "slot_index": 1}
+      ],
+      "properties": {"Node name for S&R": "LoadImage"},
+      "widgets_values": ["broll_ref_01.png", "image"]
+    },
+    {
+      "id": 3,
+      "type": "CLIPTextEncode",
+      "pos": [440, 80],
+      "size": [400, 120],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 2}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [6], "slot_index": 0}],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        "cinematic B-roll shot, dramatic lighting, shallow depth of field, anamorphic lens flare, film grain, 35mm, color graded, atmospheric, no people visible"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "CLIPTextEncode",
+      "pos": [440, 220],
+      "size": [400, 120],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 3}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [7], "slot_index": 0}],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        "blurry, low quality, cartoon, anime, watermark, text, deformed, distorted, bad anatomy, extra limbs, jpeg artifacts, oversaturated, plastic skin, person, face, singer, performance"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "LTXImageToVideo",
+      "pos": [880, 80],
+      "size": [380, 320],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 1},
+        {"name": "positive", "type": "CONDITIONING", "link": 6},
+        {"name": "negative", "type": "CONDITIONING", "link": 7},
+        {"name": "vae", "type": "VAE", "link": 4},
+        {"name": "image", "type": "IMAGE", "link": 5}
+      ],
+      "outputs": [{"name": "LATENT", "type": "LATENT", "links": [8], "slot_index": 0}],
+      "properties": {"Node name for S&R": "LTXImageToVideo"},
+      "widgets_values": [
+        768, 432, 97, 25, 0.7, 30, 3.5, 1.0, "fixed", "faster", 42
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 6,
+      "type": "VAEDecode",
+      "pos": [1300, 80],
+      "size": [220, 100],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "samples", "type": "LATENT", "link": 8},
+        {"name": "vae", "type": "VAE", "link": 9}
+      ],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [10], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VAEDecode"},
+      "widgets_values": ["sdxl"]
+    },
+    {
+      "id": 7,
+      "type": "VAELoader",
+      "pos": [880, 420],
+      "size": [320, 60],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [{"name": "VAE", "type": "VAE", "links": [9], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VAELoader"},
+      "widgets_values": ["ltx-video-vae.safetensors"]
+    },
+    {
+      "id": 8,
+      "type": "LUTApply",
+      "pos": [1560, 80],
+      "size": [240, 80],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [{"name": "image", "type": "IMAGE", "link": 10}],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [11], "slot_index": 0}],
+      "properties": {"Node name for S&R": "LUTApply"},
+      "widgets_values": ["cinematic_bleach_bypass.cube", 0.85]
+    },
+    {
+      "id": 9,
+      "type": "VHS_VideoCombine",
+      "pos": [1840, 80],
+      "size": [340, 280],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 11},
+        {"name": "audio", "type": "AUDIO", "link": null, "shape": 7}
+      ],
+      "outputs": [{"name": "VHS_FILENAMES", "type": "VHS_FILENAMES", "links": null, "slot_index": 0}],
+      "properties": {"Node name for S&R": "VHS_VideoCombine"},
+      "widgets_values": {
+        "frame_rate": 24,
+        "loop_count": 0,
+        "filename_prefix": "broll_ltx",
+        "format": "video/h264-mp4",
+        "pix_fmt": "yuv420p",
+        "crf": 18,
+        "save_metadata": true,
+        "pingpong": false,
+        "save_output": true
+      }
+    },
+    {
+      "id": 10,
+      "type": "Note",
+      "pos": [80, 600],
+      "size": [320, 280],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "properties": {"Node name for S&R": "Note"},
+      "widgets_values": [
+        "B-ROLL RENDERER (LTX-Video 2.3)\n========================================\n\nUSE THIS WORKFLOW FOR: B-roll scenes (choruses, bridges, instrumental breaks)\n                          where the singer is NOT on camera\nEXPECTED SPEED: ~30-45s per 5s clip at 768x432 on RTX 4090 mobile\n\nNOTE: Default prompt includes 'no people visible' / 'no singer' as negative\nprompt terms — keeps B-roll clean without accidental face artifacts.\nFor cinematic environments (cityscapes, landscapes, abstract).\n\nUse workflows/03_broll_render_Wan.json for hero B-roll shots\nthat need final-quality photorealism."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [1, 1, 0, 5, 0, "MODEL"],
+    [2, 1, 1, 3, 0, "CLIP"],
+    [3, 1, 1, 4, 0, "CLIP"],
+    [4, 1, 2, 5, 3, "VAE"],
+    [5, 2, 0, 5, 4, "IMAGE"],
+    [6, 3, 0, 5, 1, "CONDITIONING"],
+    [7, 4, 0, 5, 2, "CONDITIONING"],
+    [8, 5, 0, 6, 0, "LATENT"],
+    [9, 7, 0, 6, 1, "VAE"],
+    [10, 6, 0, 8, 0, "IMAGE"],
+    [11, 8, 0, 9, 0, "IMAGE"]
+  ],
+  "groups": [
+    {"title": "Inputs: LTX model + B-roll ref + prompts", "bounding": [60, 40, 770, 520], "color": "#3f789e", "font_size": 24},
+    {"title": "LTX-Video I2V core", "bounding": [860, 40, 410, 460], "color": "#88A", "font_size": 24},
+    {"title": "Decode + grade + save", "bounding": [1280, 40, 920, 320], "color": "#a33", "font_size": 24}
+  ],
+  "config": {},
+  "extra": {"ds": {"scale": 0.85}},
+  "version": 0.4,
+  "metadata": {
+    "title": "B-Roll Renderer - LTX-Video (Fast Prototype)",
+    "author": "comfyui-mv-lipsync-workflow pack",
+    "description": "Renders cinematic B-roll scenes (no singer on camera) using LTX-Video 2.3 for fast iteration.",
+    "required_custom_nodes": ["ComfyUI-LTXVideo", "ComfyUI-VideoHelperSuite", "ComfyUI-KJNodes"],
+    "required_models": ["ltx-video-2b-v0.9.1.safetensors", "ltx-video-vae.safetensors", "cinematic_bleach_bypass.cube"]
+  }
+}

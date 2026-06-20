@@ -1,0 +1,127 @@
+{
+  "last_node_id": 12,
+  "last_link_id": 16,
+  "nodes": [
+    {
+      "id": 1, "type": "UnetLoaderGGUF", "pos": [80, 80], "size": [340, 60], "flags": {}, "order": 0, "mode": 0,
+      "outputs": [{"name": "MODEL", "type": "MODEL", "links": [1], "slot_index": 0}],
+      "properties": {"Node name for S&R": "UnetLoaderGGUF"},
+      "widgets_values": ["wan2.1-i2v-1.3B-480p-Q5_K_M.gguf"]
+    },
+    {
+      "id": 2, "type": "CLIPLoader", "pos": [80, 180], "size": [340, 80], "flags": {}, "order": 1, "mode": 0,
+      "outputs": [{"name": "CLIP", "type": "CLIP", "links": [2], "slot_index": 0}],
+      "properties": {"Node name for S&R": "CLIPLoader"},
+      "widgets_values": ["umt5_xxl_fp8.safetensors", "wan"]
+    },
+    {
+      "id": 3, "type": "VAELoader", "pos": [80, 300], "size": [340, 60], "flags": {}, "order": 2, "mode": 0,
+      "outputs": [{"name": "VAE", "type": "VAE", "links": [3], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VAELoader"},
+      "widgets_values": ["wan_2.1_vae.safetensors"]
+    },
+    {
+      "id": 4, "type": "LoadImage", "pos": [80, 410], "size": [340, 320], "flags": {}, "order": 3, "mode": 0,
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [4], "slot_index": 0},
+        {"name": "MASK", "type": "MASK", "links": null, "slot_index": 1}
+      ],
+      "properties": {"Node name for S&R": "LoadImage"},
+      "widgets_values": ["broll_ref_01.png", "image"]
+    },
+    {
+      "id": 5, "type": "CLIPTextEncode", "pos": [460, 80], "size": [440, 140], "flags": {}, "order": 5, "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 2}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [5], "slot_index": 0}],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": ["cinematic B-roll, dramatic volumetric lighting, shallow depth of field, anamorphic lens flare, subtle film grain, 35mm film, photorealistic environment, no people, atmospheric mood"]
+    },
+    {
+      "id": 6, "type": "CLIPTextEncode", "pos": [460, 240], "size": [440, 140], "flags": {}, "order": 6, "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 7}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [6], "slot_index": 0}],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": ["blurry, low quality, cartoon, anime, cgi, render, watermark, text, signature, deformed, distorted, bad anatomy, extra fingers, jpeg artifacts, plastic skin, oversaturated, person, singer, face, performance"]
+    },
+    {
+      "id": 7, "type": "WanImageToVideo", "pos": [940, 80], "size": [400, 360], "flags": {}, "order": 7, "mode": 0,
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 1},
+        {"name": "positive", "type": "CONDITIONING", "link": 5},
+        {"name": "negative", "type": "CONDITIONING", "link": 6},
+        {"name": "vae", "type": "VAE", "link": 3},
+        {"name": "image", "type": "IMAGE", "link": 4}
+      ],
+      "outputs": [{"name": "LATENT", "type": "LATENT", "links": [8], "slot_index": 0}],
+      "properties": {"Node name for S&R": "WanImageToVideo"},
+      "widgets_values": [832, 480, 81, 30, 5.0, "fixed", "euler", "simple", 1.0, 1.0, 0.5, 42],
+      "color": "#223", "bgcolor": "#335"
+    },
+    {
+      "id": 8, "type": "VAEDecode", "pos": [1380, 80], "size": [220, 100], "flags": {}, "order": 8, "mode": 0,
+      "inputs": [
+        {"name": "samples", "type": "LATENT", "link": 8},
+        {"name": "vae", "type": "VAE", "link": 9}
+      ],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [10], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VAEDecode"},
+      "widgets_values": ["sdxl"]
+    },
+    {
+      "id": 9, "type": "VAELoader", "pos": [940, 460], "size": [320, 60], "flags": {}, "order": 4, "mode": 0,
+      "outputs": [{"name": "VAE", "type": "VAE", "links": [9], "slot_index": 0}],
+      "properties": {"Node name for S&R": "VAELoader"},
+      "widgets_values": ["wan_2.1_vae.safetensors"]
+    },
+    {
+      "id": 10, "type": "LUTApply", "pos": [1640, 80], "size": [240, 80], "flags": {}, "order": 9, "mode": 0,
+      "inputs": [{"name": "image", "type": "IMAGE", "link": 10}],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [11], "slot_index": 0}],
+      "properties": {"Node name for S&R": "LUTApply"},
+      "widgets_values": ["cinematic_bleach_bypass.cube", 0.9]
+    },
+    {
+      "id": 11, "type": "VHS_VideoCombine", "pos": [1920, 80], "size": [340, 280], "flags": {}, "order": 10, "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 11},
+        {"name": "audio", "type": "AUDIO", "link": null, "shape": 7}
+      ],
+      "outputs": [{"name": "VHS_FILENAMES", "type": "VHS_FILENAMES", "links": null, "slot_index": 0}],
+      "properties": {"Node name for S&R": "VHS_VideoCombine"},
+      "widgets_values": {"frame_rate": 24, "loop_count": 0, "filename_prefix": "broll_wan", "format": "video/h264-mp4", "pix_fmt": "yuv420p", "crf": 16, "save_metadata": true, "pingpong": false, "save_output": true}
+    },
+    {
+      "id": 12, "type": "Note", "pos": [80, 760], "size": [320, 200], "flags": {}, "order": 11, "mode": 0,
+      "properties": {"Node name for S&R": "Note"},
+      "widgets_values": ["B-ROLL RENDERER (Wan 2.1 I2V - FINAL)\nFinal-quality B-roll for hero shots.\nSame as Sonic pack workflow 03."],
+      "color": "#432", "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [1, 1, 0, 7, 0, "MODEL"],
+    [2, 2, 0, 5, 0, "CLIP"],
+    [3, 3, 0, 7, 3, "VAE"],
+    [4, 4, 0, 7, 4, "IMAGE"],
+    [5, 5, 0, 7, 1, "CONDITIONING"],
+    [6, 6, 0, 7, 2, "CONDITIONING"],
+    [7, 2, 0, 6, 0, "CLIP"],
+    [8, 7, 0, 8, 0, "LATENT"],
+    [9, 9, 0, 8, 1, "VAE"],
+    [10, 8, 0, 10, 0, "IMAGE"],
+    [11, 10, 0, 11, 0, "IMAGE"]
+  ],
+  "groups": [
+    {"title": "Loaders", "bounding": [60, 40, 380, 710], "color": "#3f789e", "font_size": 24},
+    {"title": "Prompts", "bounding": [440, 40, 480, 360], "color": "#a33", "font_size": 24},
+    {"title": "Wan I2V", "bounding": [920, 40, 440, 430], "color": "#88A", "font_size": 24},
+    {"title": "Decode + grade + save", "bounding": [1360, 40, 920, 320], "color": "#3a3", "font_size": 24}
+  ],
+  "config": {}, "extra": {"ds": {"scale": 0.8}}, "version": 0.4,
+  "metadata": {
+    "title": "B-Roll Renderer - Wan 2.1 I2V 1.3B GGUF (Final)",
+    "author": "comfyui-mv-latentsync-workflow pack",
+    "description": "Final-quality B-roll. Same as Sonic pack workflow 03.",
+    "required_custom_nodes": ["ComfyUI-GGUF", "ComfyUI-WanVideoWrapper", "ComfyUI-VideoHelperSuite", "ComfyUI-KJNodes"],
+    "required_models": ["wan2.1-i2v-1.3B-480p-Q5_K_M.gguf", "umt5_xxl_fp8.safetensors", "wan_2.1_vae.safetensors", "cinematic_bleach_bypass.cube"]
+  }
+}

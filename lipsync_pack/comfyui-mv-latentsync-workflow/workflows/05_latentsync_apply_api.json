@@ -1,0 +1,92 @@
+{
+  "1": {
+    "inputs": {
+      "video": "base_singer_000.mp4",
+      "force_rate": 25,
+      "custom_width": 0,
+      "custom_height": 0,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": "None",
+      "choose video to upload": "image"
+    },
+    "class_type": "VHS_LoadVideo",
+    "_meta": {
+      "title": "Load Base Singer Video"
+    }
+  },
+  "2": {
+    "inputs": {
+      "audio": "vocal_segment_000.wav"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "Load Vocal Segment"
+    }
+  },
+  "3": {
+    "inputs": {
+      "images": [
+        "1",
+        0
+      ],
+      "audio": [
+        "2",
+        0
+      ],
+      "mode": "normal",
+      "fps": 25,
+      "silent_padding_sec": 0.5
+    },
+    "class_type": "VideoLengthAdjuster",
+    "_meta": {
+      "title": "Adjust Video Length to Audio"
+    }
+  },
+  "4": {
+    "inputs": {
+      "images": [
+        "3",
+        0
+      ],
+      "audio": [
+        "3",
+        1
+      ],
+      "seed": 42,
+      "lips_expression": 1.5,
+      "inference_steps": 20
+    },
+    "class_type": "LatentSyncNode",
+    "_meta": {
+      "title": "LatentSync 1.6 Lip-Sync"
+    }
+  },
+  "5": {
+    "inputs": {
+      "images": [
+        "4",
+        0
+      ],
+      "audio": [
+        "4",
+        1
+      ],
+      "frame_rate": 25,
+      "loop_count": 0,
+      "filename_prefix": "lipsync_latentsync",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 16,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Save Lip-Synced Video"
+    }
+  }
+}

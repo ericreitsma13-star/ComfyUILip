@@ -1,0 +1,191 @@
+{
+  "1": {
+    "inputs": {
+      "video": "lipsync_latentsync_00001.mp4",
+      "force_rate": 0,
+      "custom_width": null,
+      "custom_height": null,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": null
+    },
+    "class_type": "VHS_LoadVideo",
+    "_meta": {
+      "title": "Load Lip-Synced Video"
+    }
+  },
+  "2": {
+    "inputs": {
+      "facerestore_model": [
+        "12",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ],
+      "facedetection": "retinaface_resnet50",
+      "codeformer_fidelity": 0.65
+    },
+    "class_type": "FaceRestoreCFWithModel",
+    "_meta": {
+      "title": "Face Restore (CodeFormer)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "images": [
+        "2",
+        0
+      ],
+      "model_name": "rife47.pth",
+      "source_fps": 25.0,
+      "target_fps": 50.0,
+      "scale": 1.0
+    },
+    "class_type": "RIFEInterpolation",
+    "_meta": {
+      "title": "RIFE Frame Interpolation"
+    }
+  },
+  "4": {
+    "inputs": {
+      "images": [
+        "3",
+        0
+      ],
+      "mode": "step_removal",
+      "channels": "L",
+      "step_strength": 1.5,
+      "smooth_strength": 1.0
+    },
+    "class_type": "DeflickerFrames",
+    "_meta": {
+      "title": "Deflicker"
+    }
+  },
+  "5": {
+    "inputs": {
+      "image": [
+        "4",
+        0
+      ],
+      "lut_file": "cinematic_bleach_bypass.cube",
+      "strength": 0.9,
+      "gamma_correction": false,
+      "debug_logging": false,
+      "operation_mode": "normal"
+    },
+    "class_type": "OlmLUT",
+    "_meta": {
+      "title": "Apply LUT"
+    }
+  },
+  "6": {
+    "inputs": {
+      "upscale_model": [
+        "7",
+        0
+      ],
+      "image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image"
+    }
+  },
+  "7": {
+    "inputs": {
+      "model_name": "4x-UltraSharp.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model"
+    }
+  },
+  "8": {
+    "inputs": {
+      "image": [
+        "6",
+        0
+      ],
+      "megapixels": "lanczos",
+      "resolution_steps": 2048
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale to Target"
+    }
+  },
+  "9": {
+    "inputs": {
+      "image1": [
+        "5",
+        0
+      ],
+      "image2": [
+        "8",
+        0
+      ],
+      "blend_factor": 0.5,
+      "blend_mode": "normal"
+    },
+    "class_type": "Blend",
+    "_meta": {
+      "title": "Blend Upscaled + LUT"
+    }
+  },
+  "10": {
+    "inputs": {
+      "image": [
+        "9",
+        0
+      ],
+      "intensity": 0.15,
+      "scale": 35.0,
+      "saturation": 1.0
+    },
+    "class_type": "FilmGrain",
+    "_meta": {
+      "title": "Film Grain"
+    }
+  },
+  "11": {
+    "inputs": {
+      "images": [
+        "10",
+        0
+      ],
+      "frame_rate": 50,
+      "loop_count": 0,
+      "filename_prefix": "lipsync_final",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 16,
+      "save_metadata": true,
+      "pingpong": false,
+      "save_output": true,
+      "audio": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Save Final Video"
+    }
+  },
+  "12": {
+    "inputs": {
+      "model_name": "codeformer.pth"
+    },
+    "class_type": "FaceRestoreModelLoader",
+    "_meta": {
+      "title": "Load CodeFormer Model"
+    }
+  }
+}

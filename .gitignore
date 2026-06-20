@@ -24,3 +24,27 @@ web_custom_versions/
 filtered-openapi.yaml
 uv.lock
 .comfy_environment
+
+# Generated media & audio
+*.mp4
+*.wav
+*.mp3
+*.flac
+*.ogg
+
+# npm artifact garbage (=X.X.X files)
+=*
+
+# Large downloaded workflow bundles (keep custom ones)
+SEEVR2 UPSCALE.json
+ZIT TEXT TO IMAGE.json
+
+# Lipsync pack generated assets (keep workflow JSONs)
+lipsync_pack/**/*.mp4
+lipsync_pack/**/*.png
+lipsync_pack/**/*.wav
+lipsync_pack/**/*.mp3
+lipsync_pack/**/*.pth
+lipsync_pack/**/*.safetensors
+lipsync_pack/**/*.pt
+lipsync_pack/archives/

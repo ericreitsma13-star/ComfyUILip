@@ -1,0 +1,17 @@
+{
+  "1": { "class_type": "CLIPLoader", "inputs": { "clip_name": "qwen_3_4b.safetensors", "type": "qwen_image" } },
+  "2": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["1", 0] } },
+  "2n": { "class_type": "CLIPTextEncode", "inputs": { "text": "cartoon, anime, illustration, painting, 3d render, cgi, animal, furry, disney, pixar, deformed, ugly, blurry, low quality, distorted face, bad anatomy, extra limbs, skinny, frail, thin", "clip": ["1", 0] } },
+  "3": { "class_type": "UNETLoader", "inputs": { "unet_name": "z_image_turbo_bf16.safetensors", "weight_dtype": "default" } },
+  "3a": { "class_type": "LoraLoaderModelOnly", "inputs": { "model": ["3", 0], "lora_name": "DarkB ZIT lora.safetensors", "strength_model": 0.6 } },
+  "3b": { "class_type": "LoraLoaderModelOnly", "inputs": { "model": ["3a", 0], "lora_name": "REDZ15_DetailDaemonZ_lora_v1.1.safetensors", "strength_model": 0.4 } },
+  "4": { "class_type": "EmptyLatentImage", "inputs": { "width": 1280, "height": 720, "batch_size": 1 } },
+  "5": { "class_type": "VAELoader", "inputs": { "vae_name": "ae.safetensors" } },
+  "8": { "class_type": "KSampler", "inputs": {
+      "model": ["3b", 0], "seed": 0, "steps": 8, "cfg": 2.0,
+      "sampler_name": "euler", "scheduler": "normal", "denoise": 1.0,
+      "positive": ["2", 0], "negative": ["2n", 0], "latent_image": ["4", 0]
+  } },
+  "9": { "class_type": "VAEDecode", "inputs": { "vae": ["5", 0], "samples": ["8", 0] } },
+  "10": { "class_type": "SaveImage", "inputs": { "images": ["9", 0], "filename_prefix": "sulphur_zref" } }
+}
