@@ -409,3 +409,256 @@ CreateVideo + LTXMotionSaveVideo → .mp4
 systemctl --user start comfyui
 # Flags: --lowvram --use-flash-attention (systemd service)
 ```
+
+## Music Video Pipeline (LTX 2.3 + SVI Hybrid) — Heatwave
+
+### Goal
+Longform music video for Heatwave.wav (180s, 123 BPM, single singer, realism).
+Replace the 4-7s LTX 2.3 IC-LoRA clip-and-stitch approach with hybrid:
+- **Singer scenes (lip-sync)**: LTX 2.3 + IC-LoRA per existing pipeline
+- **B-roll scenes (longer)**: SVI-Film for 24s+ coherent shots
+
+### Current Architecture (as of Jun 23 2026)
+
+**Active working pipeline (laptop, ROCm Strix Halo 96GB):**
+- Singer scenes: `ltx_lipsync_fixed.py` → LTX 2.3 Q6_K + IC-LoRA + audio VAE
+- 4-7s clips at 704×1280, IC-LoRA strength 0.8, I2V 0.7, CFG 3.5
+- Outputs: `output/ltx_lipsync_00018-audio.mp4` through `00055-audio.mp4`
+- Problem: end frame artifacts at ~4s, no extension beyond 4s coherent
+
+**New: SVI-Film for broll (in development, target cloud 48GB):**
+- Wan 2.1 I2V 14B 480P fp8 (17GB) + SVI v1.0 LoRAs
+- 81 frames × 25fps = 3.24s per clip
+- Multi-clip chaining via last frame → next anchor (5 motion frames for Film mode)
+- Cloud = 48GB VRAM, no offload needed
+
+### New Files (Jun 23 2026)
+
+| File | Purpose |
+|------|---------|
+| `audio_analyzer.py` | BPM, beats, vocal activity, song structure, SVI clip plan |
+| `lyrics_parser.py` | Parse [Section]-tagged lyrics into bar-aligned scene metadata |
+| `svi_workflow.py` | Programmatic builder for SVI ComfyUI workflows (WanVideoWrapper) |
+| `svi_runner.py` | Run multi-clip SVI on ComfyUI, chain via last-frame anchors |
+| `broll_director.py` | Map song sections to broll concepts, build prompt streams |
+| `music_video_director.py` | Master orchestrator: LTX for singer, SVI for broll, stitch final |
+| `beat_stitch.py` | Beat-synced assembly with crossfades and color matching |
+| `test_svi_chorus.py` | Smoke test: SVI-Film on Heatwave chorus 1 |
+
+### Model Downloads (in progress Jun 23 2026)
+
+| Model | Status | Size | Notes |
+|-------|--------|------|-------|
+| `Wan2_1-I2V-14B-480P_fp8_e4m3fn.safetensors` | downloading (1GB/17GB) | 17GB | SVI's native base, must be I2V not T2V |
+| `svi-shot.safetensors` | ✅ done | 2.4GB | Single coherent shot, 1 motion frame |
+| `svi-film-opt-10212025.safetensors` | ✅ done | 2.4GB | Multi-scene, 5 motion frames, optimized |
+| `svi-film.safetensors` | downloading | 2.4GB | Original film LoRA |
+| `svi-film-transitions.safetensors` | downloading | 2.4GB | For scene transitions |
+| `SVI_Wan2.2-I2V-A14B_HIGH_lora_v2.0_rank_128_fp16.safetensors` | ✅ done | 1.2GB | SVI 2.0 Pro for Wan 2.2 (cloud only) |
+| `SVI_Wan2.2-I2V-A14B_LOW_lora_v2.0_rank_128_fp16.safetensors` | ✅ done | 1.2GB | SVI 2.0 Pro for Wan 2.2 (cloud only) |
+
+**Important: User has Wan 2.2 T2V (text-to-video), NOT I2V.** SVI requires I2V. Must download Wan 2.1 I2V 480P fp8 (the actual SVI base).
+
+### SVI Workflow Pattern (Kijai WanVideoWrapper)
+
+SVI uses `WanVideoSVIProEmbeds` to chain clips:
+- First clip: `anchor_samples` from VAE-encoded ref image, no `prev_samples`
+- Subsequent clips: `anchor_samples` + `prev_samples` (last latent) + `motion_latent_count=5`
+- Pixel-anchor fallback (used in `svi_runner.py`): extract last frame of prev video, re-encode
+
+Per-clip workflow structure:
+```
+WanVideoModelLoader (Wan 2.1 I2V fp8) 
+  → WanVideoSetLoRAs (SVI LoRA, strength 1.0)
+  → WanVideoSetBlockSwap (20 blocks for 16-48GB VRAM)
+  → WanVideoTextEncode (prompt)
+  → WanVideoSVIProEmbeds (anchor + prev samples)
+  → WanVideoSampler (cfg 5.0, 30 steps, euler, normal scheduler)
+  → WanVideoDecode (tiled)
+  → VHS_VideoCombine (mp4, 25fps)
+```
+
+### Music Video Plan for Heatwave (180s, 123 BPM)
+
+| Scene | Section | Type | Duration | Model | Ref |
+|-------|---------|------|----------|-------|-----|
+| 0 | intro | broll | 12s | SVI-Film | city_aerial |
+| 1 | verse1 | singer | 24s | LTX 2.3 IC-LoRA | singer_01 |
+| 2 | prechorus1 | singer | 12s | LTX 2.3 IC-LoRA | singer_01 |
+| 3 | chorus1 | broll | 24s | SVI-Film | feet_puddle |
+| 4 | verse2 | singer | 24s | LTX 2.3 IC-LoRA | singer_01 |
+| 5 | prechorus2 | singer | 12s | LTX 2.3 IC-LoRA | singer_01 |
+| 6 | chorus2 | broll | 24s | SVI-Film | dance_floor |
+| 7 | bridge | broll | 18s | SVI-Film | skyline |
+| 8 | solo | broll | 6s | SVI-Shot | vinyl (TBD) |
+| 9 | chorus3 | singer | 18s | LTX 2.3 IC-LoRA | singer_01 |
+| 10 | outro | broll | 6.3s | SVI-Shot | city_aerial |
+
+### Broll Concept Bank
+
+| Concept | Mood | Motion | File |
+|---------|------|--------|------|
+| city_aerial | atmospheric, mysterious | slow aerial push-in over neon city | `broll_refs/city_aerial.png` |
+| neon_bokeh | intimate, moody | shallow DOF pan over bokeh | `broll_refs/neon_bokeh.png` |
+| dance_floor | rising tension | camera pushes toward dance floor | `broll_refs/dance_floor.png` |
+| feet_puddle | triumphant, kinetic | low-angle feet walking through neon puddle | `broll_refs/feet_puddle.png` |
+| skyline | expansive, contemplative | slow cinematic reveal | `broll_refs/skyline.png` |
+
+### Settings (SVI on Wan 2.1 I2V 480P)
+
+| Param | Value | Notes |
+|-------|-------|-------|
+| `width` | 832 | Native SVI training res |
+| `height` | 480 | Native SVI training res |
+| `num_frames` | 81 | 3.24s per clip @ 25fps |
+| `cfg` | 5.0 | Per SVI FAQ Q3 |
+| `lora_strength` | 1.0 | Full SVI strength |
+| `vram_blocks_to_swap` | 20 | For 16GB; reduce to 5-10 for 48GB |
+| `motion_latent_count` | 5 (Film) / 1 (Shot) | Per SVI FAQ Q5 |
+| `steps` | 30 | Default |
+| `sampler` | euler / uni_pc | Both work |
+| `scheduler` | normal | |
+| `flow_shift` | 5.0 | For 480p |
+| `seed` | 42 + i*137 | Different per clip (CRITICAL) |
+
+### Test Commands
+
+```bash
+# Smoke test: render SVI-Film on chorus 1 (dry run)
+python test_svi_chorus.py --dry-run
+
+# Real render (after Wan 2.1 I2V download completes)
+python test_svi_chorus.py
+
+# Full MV orchestration
+python music_video_director.py \
+  --audio input/Heatwave.wav \
+  --lyrics input/Heatwave_lyrics.txt \
+  --singer-ref input/heatwave_singer.png \
+  --broll-refs-dir output/broll_refs \
+  --output-dir output/heatwave_v2 \
+  --url http://<cloud-url>:8188
+
+# Just broll, skip singer (faster iteration)
+python music_video_director.py \
+  --audio input/Heatwave.wav --lyrics input/Heatwave_lyrics.txt \
+  --skip-singer --output-dir output/heatwave_broll_test
+```
+
+### Test Results (Jun 23 2026)
+
+✅ **Pipeline works end-to-end** on laptop with Strix Halo 16GB VRAM:
+- `audio_analyzer.py` — BPM 123.05, 16 sections detected (after noise-section filtering)
+- `lyrics_parser.py` — clean parsing of [Section] tags
+- `svi_workflow.py` — valid ComfyUI workflow with VACE + I2V + SVI LoRA pattern
+- `svi_runner.py` — queues to ComfyUI, runs SVI-Film, downloads output
+- `broll_director.py` — scene plan + prompt stream generation
+- `music_video_director.py` — full orchestration (LTX singer + SVI broll)
+
+**Hardware notes:**
+- Wan 2.1 14B I2V fp8 (17GB) **OOMs on 16GB VRAM** even with full block swap
+- **Use the GGUF version** `wan2.1-i2v-14b-480p-Q4_K_M.gguf` (~7GB) for 16GB VRAM
+- On cloud 48GB VRAM: use fp8 safetensors (17GB) for better quality, or GGUF for faster
+- **Laptop test (Strix Halo)**: ~25-30 min per 81-frame clip with GGUF + 20 block swap
+- **Cloud estimate**: 3-5 min per clip on 48GB VRAM
+
+**Key workflow fix (svi_workflow.py):**
+- Use `WanVideoModelLoader` (not `UnetLoaderGGUF`) — auto-detects format
+- For GGUF: `quantization: "disabled"` (not `fp8_e4m3fn`)
+- Pattern: `LoadImage → WanVideoVACEStartToEndFrame → WanVideoImageToVideoEncode → WanVideoSampler`
+- Required sampler field: `riflex_freq_index: 0`
+- Valid schedulers: `euler`, `unipc`, `dpm++`, `lcm`, etc. (NOT `normal`)
+
+### SVI LoRA Strengths Found
+
+Tested with `svi_wan21/version-1.0/svi-film-opt-10212025.safetensors`:
+- Strength 1.0 (full SVI) — model dominates, strong reference-image lock
+- Need to enable LoRA via `WanVideoLoraSelect` node before `WanVideoSetBlockSwap`
+
+### Critical Notes
+
+- **SVI LoRAs cannot use vanilla Wan 2.1 I2V workflow** — needs `WanVideoSVIProEmbeds` for chaining
+- **Different seed per clip is mandatory** (community confirmed)
+- **Use fp16 LoRA not quantized** (per SVI FAQ Issue #51)
+- **480×832 horizontal is the only stable resolution** (training match)
+- **No 121-frame clips — must use 81** (causes color degradation per community)
+- **End frame weirdness** (LTX 2.3 IC-LoRA) is a base-model limit, not SVI — SVI's error recycling mitigates it
+- SVI-Talk is for **speaking**, not singing. For singing: keep LTX 2.3 IC-LoRA, or wait for community SVI-Sing fine-tune
+
+### Future Improvements (not yet built)
+
+- Auto LLM prompt generation per scene (currently static bank)
+- Color consistency pass between scenes (deflicker node exists in custom_nodes)
+- Beat-aligned cuts (currently time-aligned to section boundaries)
+- SVI-Sing: singing-specific LoRA (community project, not in SVI repo yet)
+
+## Working Lip-Sync Pipeline (Jun 20-23 2026)
+
+### What Works
+Z-Image reference → LTX 2.3 (audio-conditioned) → video with motion + lip sync.
+
+### Winning Settings (output 00026)
+```bash
+python3 ltx_lipsync_fixed.py \
+  --image heatwave_refs/portrait_v2.png \
+  --audio segment_010.wav \
+  --prompt "female singer on neon-lit city street, subtle movement, dramatic neon lighting, cinematic portrait, photorealistic, detailed face, natural skin, 35mm film" \
+  --duration 7.5 --seed 50 --lora 0.8 --i2v 0.6 --cfg 3.5 \
+  --width 960 --height 544
+```
+
+| Param | Value | Notes |
+|-------|-------|-------|
+| Model | Q6_K | 20GB, better than Q4 for quality |
+| LoRA strength | 0.8 | Distilled LoRA |
+| I2V strength | 0.6 | Lower = preserves reference face, less distortion |
+| CFG | 3.5 | Balance of prompt adherence + quality |
+| Sampler | euler | Simple, fast |
+| Scheduler | linear_quadratic | 15 steps |
+| Resolution | 960x544 | Matches pro_clip format |
+| Duration | 7.5s | 180 frames |
+
+### Reference Image Generation (Z-Image)
+```python
+# Z-Image settings for reference images
+UNET: z_image_turbo_bf16.safetensors
+CLIP: qwen_3_4b.safetensors (type: "qwen_image")
+VAE: ae.safetensors  # CRITICAL: NOT flux2-vae.safetensors
+LoRAs: DarkB ZIT lora (0.3) + REDZ15_DetailDaemon (0.2)
+Steps: 4, CFG: 1.5, Sampler: euler
+Resolution: 960x544 for singer refs, 1920x1088 for b-roll
+```
+
+**Key finding: Z-Image VAE is `ae.safetensors`, NOT `flux2-vae.safetensors`**
+Using the wrong VAE causes tensor dimension mismatch (16 vs 128 channels).
+
+### Reference Image Style (portrait_v2 — Natural Skin)
+```
+positive: "close-up portrait of a young woman singing, visible skin pores,
+  natural skin texture, film grain, warm golden skin, curly dark hair,
+  neon pink and blue light on face, candid moment, 35mm film photography,
+  photorealistic, natural imperfections"
+negative: "ugly, deformed, blurry, low quality, plastic skin, airbrushed,
+  smooth skin, doll-like, cartoon"
+LoRA strengths: DarkB 0.3, DetailDaemon 0.2 (lower = more natural)
+```
+
+### Shot Plan (Heatwave)
+- **Singer scenes**: studio_front.png / studio_34.png references
+- **B-roll**: Z-Image or Ideogram 4 references at 1920x1088
+- **B-roll audio**: instrumental track (not vocals) drives LTX motion
+- **Final assembly**: overlay full song audio in ffmpeg
+
+### Wav2Lip (Installed but Degrades Quality)
+- Node: `ComfyUI_wav2lip` (patched: soundfile.write instead of torchaudio.save)
+- Model: `wav2lip_gan.pth` (415MB) in `custom_nodes/ComfyUI_wav2lip/Wav2Lip/checkpoints/`
+- Result: adds lip sync but causes eye glitches and face artifacts
+- **Verdict: LTX alone produces better output than LTX + Wav2Lip**
+
+### What Doesn't Work
+- **IC-LoRA**: lip sync not convincing, 4s limit, end-frame artifacts
+- **LatentSync**: post-processing mouth-mover, not singing
+- **Wav2Lip**: eye glitches, face artifacts
+- **Empty prompt**: static video with no motion
+- **"mouth wide open" prompt**: causes face distortion
+- **Wrong VAE**: `flux2-vae.safetensors` breaks Z-Image (use `ae.safetensors`)
