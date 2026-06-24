@@ -412,17 +412,22 @@ systemctl --user start comfyui
 
 ## Music Video Pipeline (LTX 2.3 I2V Only) — Heatwave
 
+> **Active build plan: `plan_heatwave_music_video.md`**
+> Lyric-driven broll spec, 12 unique Ideogram 4 refs, per-clip LTX params.
+> Step 0+ not yet executed. Read that file first if you are picking up this work.
+
 ### Goal
 Longform music video for Heatwave.wav (180s, 123 BPM, single singer, realism).
 Use the **same proven LTX 2.3 + IC-LoRA pipeline** for both singer and broll
-scenes (no SVI — see "SVI Abandoned" below).
+scenes (no SVI / Video-Infinity — see "Long-Video Path Abandoned" below).
 
 ### Current Architecture (as of Jun 24 2026)
 - **All scenes use LTX 2.3 Q6_K** with the same prompt/LoRA/encoder stack as
   the 00026 winner
-- Singer scenes: `ltx_lipsync_fixed.py` (audio-driven lip sync)
-- B-roll scenes: `broll_generate.py` (same model, no audio path)
+- Singer scenes: `ltx_lipsync_fixed.py` (audio-driven lip sync) — **singer is good, do not touch**
+- B-roll scenes: `broll_generate.py` (same model, no audio path) — **being replaced by lyric-driven v2 (see plan)**
 - Driver scripts: `singer_heatwave.py` and `broll_heatwave.py` orchestrators
+- Workflow template exported from the 00026 MP4: `workflow_ltx_00026_*.json`
 
 **Active working pipeline (laptop, NVIDIA RTX 4090 16GB):**
 - Singer scenes: `ltx_lipsync_fixed.py` → LTX 2.3 Q6_K + distilled LoRA + audio VAE
@@ -434,80 +439,74 @@ scenes (no SVI — see "SVI Abandoned" below).
 - B-roll scenes: `broll_generate.py` → same model, no audio path
   - Refs: `broll_refs/{city_aerial,neon_bokeh,dance_floor,feet_puddle,skyline}.png`
   - 7.5s clips at 960×544, seed varies per clip
-  - Driven by `broll_heatwave.py` (12 clips queued, ~70-90 min total)
+  - Driven by `broll_heatwave_serial.py` (one clip at a time, restart ComfyUI between)
+  - 12 clips total at ~5 min each = ~70-90 min
 
-### SVI Abandoned
-- Tested SVI on laptop — produced 90% grey frames in 25 min
-- Wan 2.1 I2V 14B fp8 (17GB) OOMs on 16GB VRAM
-- GGUF Q4_K_M (~7GB) fits but quantization artifacts make output unusable
-- Strix Halo (96GB unified) would work for SVI but user is on the RTX 4090
-- **Conclusion: SVI for music video broll is not viable on the laptop.
-  Use LTX 2.3 I2V (same model family, better quality, fits 16GB with Q6_K).**
+### Long-Video Path Abandoned
+- **SVI (Stable Video Infinity)** — error-recycling LoRA, 22B Q6_K OOMs on 16GB
+- **Video-Infinity** (Yuanshi9815) — multi-GPU distributed, won't work on single GPU
+- **Wan 2.2 I2V** — too large for laptop, only on cloud
+- Strix Halo (96GB unified) could run SVI but user is on RTX 4090
+- **Conclusion: long-video generation methods aren't viable for this hardware.
+  Stick with the proven LTX 2.3 I2V + stitching approach.**
 
-### New Files (Jun 23 2026)
+### Critical Pattern: Restart ComfyUI Between Clips
+- 22B Q6_K model OOMs on 16GB if ComfyUI runs back-to-back clips (state leak)
+- **Solution**: Restart ComfyUI between every broll render:
+  ```bash
+  systemctl --user restart comfyui
+  # wait for /system_stats to return
+  ```
+- Built into `broll_heatwave_serial.py` (--no-restart flag for testing)
+- Without restart, all clips after the first OOM with "Allocation on device 0 would exceed allowed memory"
+
+### Files (Final, Jun 24 2026)
 
 | File | Purpose |
 |------|---------|
-| `audio_analyzer.py` | BPM, beats, vocal activity, song structure, SVI clip plan |
-| `lyrics_parser.py` | Parse [Section]-tagged lyrics into bar-aligned scene metadata |
-| `svi_workflow.py` | Programmatic builder for SVI ComfyUI workflows (WanVideoWrapper) — abandoned, not for laptop |
-| `svi_runner.py` | Run multi-clip SVI on ComfyUI, chain via last-frame anchors — abandoned, not for laptop |
-| `broll_director.py` | Map song sections to broll concepts, build prompt streams (SVI-only) |
-| `music_video_director.py` | Master orchestrator: LTX singer + SVI broll (SVI abandoned for laptop) |
-| `beat_stitch.py` | Beat-synced final assembly with crossfades and color matching |
-| `test_svi_chorus.py` | SVI smoke test — abandoned, not for laptop |
-| `broll_generate.py` | **LTX 2.3 I2V broll generator** (no audio) — primary broll tool |
-| `broll_heatwave.py` | **Heatwave broll orchestrator** — 12 clips via `broll_generate.py` |
-| `singer_heatwave.py` | **Heatwave singer orchestrator** — 18 clips via `ltx_lipsync_fixed.py` |
+| `ltx_lipsync_fixed.py` | **Singer scenes** — proven 00026 winner, audio-driven lip sync |
+| `singer_heatwave.py` | Singer scene orchestrator (18 clips via ltx_lipsync_fixed.py) |
+| `broll_generate.py` | **B-roll scenes** — LTX 2.3 I2V, no audio path |
+| `broll_heatwave.py` | B-roll orchestrator (batch mode, 12 clips in queue) |
+| `broll_heatwave_serial.py` | **B-roll serial mode** — one clip at a time with ComfyUI restart |
+| `beat_stitch.py` | Final assembly with crossfades and color matching |
+| `workflows_export.py` | Export 00026 winning workflow as reusable API JSON templates |
+| `workflow_ltx_00026_lipsync.json` | Exported 00026 winning workflow (24 nodes, audio) |
+| `workflow_ltx_00026_broll.json` | Exported broll variant (17 nodes, audio stripped) |
 
-### Model Downloads (in progress Jun 23 2026)
+**Removed (SVI/abandoned):** `audio_analyzer.py`, `lyrics_parser.py`, `svi_workflow.py`,
+`svi_runner.py`, `broll_director.py`, `music_video_director.py`, `test_svi_chorus.py`,
+`prompt_stream_generator.py`
 
-| Model | Status | Size | Notes |
-|-------|--------|------|-------|
-| `Wan2_1-I2V-14B-480P_fp8_e4m3fn.safetensors` | downloading (1GB/17GB) | 17GB | SVI's native base, must be I2V not T2V |
-| `svi-shot.safetensors` | ✅ done | 2.4GB | Single coherent shot, 1 motion frame |
-| `svi-film-opt-10212025.safetensors` | ✅ done | 2.4GB | Multi-scene, 5 motion frames, optimized |
-| `svi-film.safetensors` | downloading | 2.4GB | Original film LoRA |
-| `svi-film-transitions.safetensors` | downloading | 2.4GB | For scene transitions |
-| `SVI_Wan2.2-I2V-A14B_HIGH_lora_v2.0_rank_128_fp16.safetensors` | ✅ done | 1.2GB | SVI 2.0 Pro for Wan 2.2 (cloud only) |
-| `SVI_Wan2.2-I2V-A14B_LOW_lora_v2.0_rank_128_fp16.safetensors` | ✅ done | 1.2GB | SVI 2.0 Pro for Wan 2.2 (cloud only) |
+### Models (all in /home/ericr/ComfyUI/models/)
 
-**Important: User has Wan 2.2 T2V (text-to-video), NOT I2V.** SVI requires I2V. Must download Wan 2.1 I2V 480P fp8 (the actual SVI base).
-
-### SVI Workflow Pattern (Kijai WanVideoWrapper)
-
-SVI uses `WanVideoSVIProEmbeds` to chain clips:
-- First clip: `anchor_samples` from VAE-encoded ref image, no `prev_samples`
-- Subsequent clips: `anchor_samples` + `prev_samples` (last latent) + `motion_latent_count=5`
-- Pixel-anchor fallback (used in `svi_runner.py`): extract last frame of prev video, re-encode
-
-Per-clip workflow structure:
-```
-WanVideoModelLoader (Wan 2.1 I2V fp8) 
-  → WanVideoSetLoRAs (SVI LoRA, strength 1.0)
-  → WanVideoSetBlockSwap (20 blocks for 16-48GB VRAM)
-  → WanVideoTextEncode (prompt)
-  → WanVideoSVIProEmbeds (anchor + prev samples)
-  → WanVideoSampler (cfg 5.0, 30 steps, euler, normal scheduler)
-  → WanVideoDecode (tiled)
-  → VHS_VideoCombine (mp4, 25fps)
-```
+| Model | Path | Size | Used by |
+|-------|------|------|---------|
+| `LTX-2.3-22B-distilled-1.1-Q6_K.gguf` | `diffusion_models/` | ~13GB | Singer + B-roll UNet |
+| `ltx-2.3-22b-distilled-1.1.safetensors` | `diffusion_models/` | ~20GB | Singer audio VAE |
+| `ltx-2.3-22b-distilled_video_vae.safetensors` | `vae/` | ~250MB | Singer + B-roll video VAE |
+| `gemma_3_12B_it_fp8_e4m3fn.safetensors` | `text_encoders/` | ~6GB | Text encoder (T5) |
+| `ltx-2-3-22b-text_encoder.safetensors` | `text_encoders/` | ~2GB | Text projection |
+| `ltx-2.3-22b-distilled-lora-384-1.1.safetensors` | `loras/` | ~7GB | Distilled LoRA |
+| `wan2.1-i2v-14b-480p-Q4_K_M.gguf` | `diffusion_models/` | ~7GB | SVI (unused, kept) |
+| `Wan2_1-I2V-14B-480P_fp8_e4m3fn.safetensors` | `diffusion_models/` | 17GB | SVI (unused, kept) |
+| `svi_*.safetensors` | `loras/svi_wan21/version-1.0/` | 2.4GB each | SVI (unused, kept) |
 
 ### Music Video Plan for Heatwave (180s, 123 BPM)
 
 | Scene | Section | Type | Duration | Model | Ref |
 |-------|---------|------|----------|-------|-----|
-| 0 | intro | broll | 12s | SVI-Film | city_aerial |
-| 1 | verse1 | singer | 24s | LTX 2.3 IC-LoRA | singer_01 |
-| 2 | prechorus1 | singer | 12s | LTX 2.3 IC-LoRA | singer_01 |
-| 3 | chorus1 | broll | 24s | SVI-Film | feet_puddle |
-| 4 | verse2 | singer | 24s | LTX 2.3 IC-LoRA | singer_01 |
-| 5 | prechorus2 | singer | 12s | LTX 2.3 IC-LoRA | singer_01 |
-| 6 | chorus2 | broll | 24s | SVI-Film | dance_floor |
-| 7 | bridge | broll | 18s | SVI-Film | skyline |
-| 8 | solo | broll | 6s | SVI-Shot | vinyl (TBD) |
-| 9 | chorus3 | singer | 18s | LTX 2.3 IC-LoRA | singer_01 |
-| 10 | outro | broll | 6.3s | SVI-Shot | city_aerial |
+| 0 | intro | broll | 12s | LTX 2.3 I2V | city_aerial |
+| 1 | verse1 | singer | 24s | LTX 2.3 + IC-LoRA | singer_01 (portrait_v2) |
+| 2 | prechorus1 | singer | 12s | LTX 2.3 + IC-LoRA | singer_01 |
+| 3 | chorus1 | broll | 24s | LTX 2.3 I2V | feet_puddle |
+| 4 | verse2 | singer | 24s | LTX 2.3 + IC-LoRA | singer_01 |
+| 5 | prechorus2 | singer | 12s | LTX 2.3 + IC-LoRA | singer_01 |
+| 6 | chorus2 | broll | 24s | LTX 2.3 I2V | dance_floor |
+| 7 | bridge | broll | 18s | LTX 2.3 I2V | skyline |
+| 8 | solo | broll | 6s | LTX 2.3 I2V | neon_bokeh |
+| 9 | chorus3 | singer | 18s | LTX 2.3 + IC-LoRA | singer_01 |
+| 10 | outro | broll | 6.3s | LTX 2.3 I2V | city_aerial |
 
 ### Broll Concept Bank
 
