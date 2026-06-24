@@ -410,27 +410,39 @@ systemctl --user start comfyui
 # Flags: --lowvram --use-flash-attention (systemd service)
 ```
 
-## Music Video Pipeline (LTX 2.3 + SVI Hybrid) — Heatwave
+## Music Video Pipeline (LTX 2.3 I2V Only) — Heatwave
 
 ### Goal
 Longform music video for Heatwave.wav (180s, 123 BPM, single singer, realism).
-Replace the 4-7s LTX 2.3 IC-LoRA clip-and-stitch approach with hybrid:
-- **Singer scenes (lip-sync)**: LTX 2.3 + IC-LoRA per existing pipeline
-- **B-roll scenes (longer)**: SVI-Film for 24s+ coherent shots
+Use the **same proven LTX 2.3 + IC-LoRA pipeline** for both singer and broll
+scenes (no SVI — see "SVI Abandoned" below).
 
-### Current Architecture (as of Jun 23 2026)
+### Current Architecture (as of Jun 24 2026)
+- **All scenes use LTX 2.3 Q6_K** with the same prompt/LoRA/encoder stack as
+  the 00026 winner
+- Singer scenes: `ltx_lipsync_fixed.py` (audio-driven lip sync)
+- B-roll scenes: `broll_generate.py` (same model, no audio path)
+- Driver scripts: `singer_heatwave.py` and `broll_heatwave.py` orchestrators
 
-**Active working pipeline (laptop, ROCm Strix Halo 96GB):**
-- Singer scenes: `ltx_lipsync_fixed.py` → LTX 2.3 Q6_K + IC-LoRA + audio VAE
-- 4-7s clips at 704×1280, IC-LoRA strength 0.8, I2V 0.7, CFG 3.5
-- Outputs: `output/ltx_lipsync_00018-audio.mp4` through `00055-audio.mp4`
-- Problem: end frame artifacts at ~4s, no extension beyond 4s coherent
+**Active working pipeline (laptop, NVIDIA RTX 4090 16GB):**
+- Singer scenes: `ltx_lipsync_fixed.py` → LTX 2.3 Q6_K + distilled LoRA + audio VAE
+  - 7.5s clips at 960×544, LoRA 0.8, I2V 0.6, CFG 3.5, euler, linear_quadratic, 15 steps
+  - Ref: `heatwave_refs/portrait_v2.png` (Z-Image natural-skin)
+  - Audio: `segment_NNN.wav` (7.5s chunks)
+  - Outputs: `output/ltx_lipsync_00018-audio.mp4` through `00055-audio.mp4` (~7.4s each, ~1-2.5MB)
+  - 00026 = best result (used segment_010.wav, seed 50)
+- B-roll scenes: `broll_generate.py` → same model, no audio path
+  - Refs: `broll_refs/{city_aerial,neon_bokeh,dance_floor,feet_puddle,skyline}.png`
+  - 7.5s clips at 960×544, seed varies per clip
+  - Driven by `broll_heatwave.py` (12 clips queued, ~70-90 min total)
 
-**New: SVI-Film for broll (in development, target cloud 48GB):**
-- Wan 2.1 I2V 14B 480P fp8 (17GB) + SVI v1.0 LoRAs
-- 81 frames × 25fps = 3.24s per clip
-- Multi-clip chaining via last frame → next anchor (5 motion frames for Film mode)
-- Cloud = 48GB VRAM, no offload needed
+### SVI Abandoned
+- Tested SVI on laptop — produced 90% grey frames in 25 min
+- Wan 2.1 I2V 14B fp8 (17GB) OOMs on 16GB VRAM
+- GGUF Q4_K_M (~7GB) fits but quantization artifacts make output unusable
+- Strix Halo (96GB unified) would work for SVI but user is on the RTX 4090
+- **Conclusion: SVI for music video broll is not viable on the laptop.
+  Use LTX 2.3 I2V (same model family, better quality, fits 16GB with Q6_K).**
 
 ### New Files (Jun 23 2026)
 
@@ -438,12 +450,15 @@ Replace the 4-7s LTX 2.3 IC-LoRA clip-and-stitch approach with hybrid:
 |------|---------|
 | `audio_analyzer.py` | BPM, beats, vocal activity, song structure, SVI clip plan |
 | `lyrics_parser.py` | Parse [Section]-tagged lyrics into bar-aligned scene metadata |
-| `svi_workflow.py` | Programmatic builder for SVI ComfyUI workflows (WanVideoWrapper) |
-| `svi_runner.py` | Run multi-clip SVI on ComfyUI, chain via last-frame anchors |
-| `broll_director.py` | Map song sections to broll concepts, build prompt streams |
-| `music_video_director.py` | Master orchestrator: LTX for singer, SVI for broll, stitch final |
-| `beat_stitch.py` | Beat-synced assembly with crossfades and color matching |
-| `test_svi_chorus.py` | Smoke test: SVI-Film on Heatwave chorus 1 |
+| `svi_workflow.py` | Programmatic builder for SVI ComfyUI workflows (WanVideoWrapper) — abandoned, not for laptop |
+| `svi_runner.py` | Run multi-clip SVI on ComfyUI, chain via last-frame anchors — abandoned, not for laptop |
+| `broll_director.py` | Map song sections to broll concepts, build prompt streams (SVI-only) |
+| `music_video_director.py` | Master orchestrator: LTX singer + SVI broll (SVI abandoned for laptop) |
+| `beat_stitch.py` | Beat-synced final assembly with crossfades and color matching |
+| `test_svi_chorus.py` | SVI smoke test — abandoned, not for laptop |
+| `broll_generate.py` | **LTX 2.3 I2V broll generator** (no audio) — primary broll tool |
+| `broll_heatwave.py` | **Heatwave broll orchestrator** — 12 clips via `broll_generate.py` |
+| `singer_heatwave.py` | **Heatwave singer orchestrator** — 18 clips via `ltx_lipsync_fixed.py` |
 
 ### Model Downloads (in progress Jun 23 2026)
 
@@ -617,6 +632,39 @@ python3 ltx_lipsync_fixed.py \
 | Scheduler | linear_quadratic | 15 steps |
 | Resolution | 960x544 | Matches pro_clip format |
 | Duration | 7.5s | 180 frames |
+| Reference | `heatwave_refs/portrait_v2.png` | Z-Image natural-skin ref, LoRA 0.3/0.2 |
+| Seed | 50 (base) | + `scene_index * 100 + clip_index * 13` for variation |
+| Audio | `segment_NNN.wav` | 7.5s chunks from `input/` |
+
+### Singer Scene Orchestration (`singer_heatwave.py`)
+
+The 5 singer scenes (verse1, prechorus1, verse2, prechorus2, chorus3) need
+~18 lip-sync clips total (3-4 per scene, depending on duration). Use:
+
+```bash
+# Show the plan first
+python singer_heatwave.py --plan
+
+# Render all singer scenes (sequential, ~5-6 min each = ~90-108 min)
+python singer_heatwave.py --submit
+
+# Check progress
+python singer_heatwave.py --status
+cat /home/ericr/ComfyUI/output/heatwave_singers/submit_log.json | jq
+
+# Stitch when done
+python singer_heatwave.py --stitch
+# Output: output/heatwave_singers/singer_scenes_full.mp4
+```
+
+Segment-to-scene mapping (7.5s segments @ 123 BPM, 24fps):
+- **verse1** (12-36s, 24s) → segment_001 (cut) + 002, 003, 004 (cut) = 4 clips
+- **prechorus1** (36-48s, 12s) → segment_004 (cut) + 005, 006 (cut) = 3 clips
+- **verse2** (72-96s, 24s) → segment_009 (cut) + 010, 011, 012 (cut) = 4 clips
+- **prechorus2** (96-108s, 12s) → segment_012 (cut) + 013, 014 (cut) = 3 clips
+- **chorus3** (156-174s, 18s) → segment_020 (cut) + 021, 022 + 023 (cut) = 4 clips
+
+`segment_010.wav` (verse2, clip 1) is what produced the 00026 winner.
 
 ### Reference Image Generation (Z-Image)
 ```python
