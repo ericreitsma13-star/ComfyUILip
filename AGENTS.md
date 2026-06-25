@@ -709,3 +709,80 @@ LoRA strengths: DarkB 0.3, DetailDaemon 0.2 (lower = more natural)
 - **Empty prompt**: static video with no motion
 - **"mouth wide open" prompt**: causes face distortion
 - **Wrong VAE**: `flux2-vae.safetensors` breaks Z-Image (use `ae.safetensors`)
+
+### Full Song Assembly Formula (Working as of Jun 24 2026)
+
+**The proven pipeline: render individual clips → concat → overlay full song audio.**
+
+#### Step 1: Split vocals into 7.5s segments
+```bash
+python3 scripts/split_audio.py \
+  --input output/heatwave/separated/vocals.wav \
+  --output-dir input/ --segment-sec 7.5
+```
+⚠ **Critical**: re-split from `vocals.wav` (NOT instrumental). Instrumental
+segments produce silent/bass-only clips with no lip sync motion.
+
+#### Step 2: Render all segments with ltx_lipsync_fixed.py
+```bash
+# Render each segment (alternate studio_front/studio_34 for variety)
+for idx in $(seq 0 23); do
+  ref="heatwave_refs/studio_front.png"
+  [ $((idx % 2)) -eq 1 ] && ref="heatwave_refs/studio_34.png"
+  python3 ltx_lipsync_fixed.py \
+    --image "$ref" --audio "segment_$(printf '%03d' $idx).wav" \
+    --prompt "female singer performing in studio, singing into microphone, dramatic warm lighting, cinematic, photorealistic, detailed face, natural skin, 35mm film" \
+    --duration 7.5 --seed $((50 + idx)) --lora 0.8 --i2v 0.6 --cfg 3.5 \
+    --width 960 --height 544 --output output/
+done
+```
+
+**⚠ Restart ComfyUI between renders** to avoid Q6_K OOM:
+```bash
+systemctl --user restart comfyui && sleep 30
+```
+
+#### Step 3: Concat video + overlay full song
+```bash
+# Create concat list (24 clips × 7.5s = 180s, matches song length)
+for i in $(seq 61 84); do
+  echo "file 'output/ltx_lipsync_000${i}.mp4'"
+  echo "duration 7.5"
+done > /tmp/concat.txt
+echo "file 'output/ltx_lipsync_00084.mp4'" >> /tmp/concat.txt
+
+# Concat + force 7.5s per clip via fps filter (fixes 177-frame drift)
+ffmpeg -y -f concat -safe 0 -i /tmp/concat.txt \
+  -vf "fps=24" -an -c:v libx264 -crf 18 /tmp/video.mp4
+
+# Overlay full Heatwave.wav audio
+ffmpeg -y -i /tmp/video.mp4 -i input/Heatwave.wav \
+  -c:v copy -c:a aac -b:a 192k -map 0:v -map 1:a -shortest \
+  output/heatwave_studio_full.mp4
+```
+
+**Key details:**
+- LTX generates 177 frames (7.375s) per clip, but audio segments are 7.5s
+- The `fps=24` filter stretches each clip to exactly 7.5s, fixing the 0.125s/clip drift
+- Without this, sync drifts ~0.5s after 4 clips
+- 24 clips × 7.5s = 180s (matches 180.28s song length)
+- Strip per-clip audio (`-an`) and overlay full song — individual clip audio causes desync
+
+#### Reference images used
+- **Studio front**: `heatwave_refs/studio_front.png` (Z-Image, LoRA 0.3/0.2, 960x544)
+- **Studio 3/4**: `heatwave_refs/studio_34.png` (same settings, different angle)
+- Alternate refs generated with lower LoRA strength for natural skin texture
+
+#### What was tried and abandoned
+- **Wav2Lip** post-processing: adds lip sync but causes eye glitches
+- **B-roll with Z-Image refs**: too generic, not lyric-literal
+- **B-roll with blank reference + text prompts**: random/cartoon output
+- **IC-LoRA + OmniNFT stacking**: no improvement over base pipeline
+- **Two-pass GAP-style sampling**: higher VRAM, no quality gain
+- **LatentSync post-processing**: mouth moves but doesn't sing
+
+#### Remaining improvements (from plan_heatwave_music_video.md)
+- Lyric-literal b-roll (12 entries with Ideogram 4 refs)
+- Snap to 8n+1 frames (not 7.5s which is off-grid)
+- 8-section prompt structure for better quality
+- Singer reference alternates (close-up, wide) per scene type
