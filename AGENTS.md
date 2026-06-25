@@ -781,6 +781,30 @@ ffmpeg -y -i /tmp/video.mp4 -i input/Heatwave.wav \
 - **Two-pass GAP-style sampling**: higher VRAM, no quality gain
 - **LatentSync post-processing**: mouth moves but doesn't sing
 
+#### Key Technical Findings
+
+**Snap-to-LTX-grid (from KupkaProd):**
+- LTX needs `8n+1` frames: 177 frames (7.375s) not 180 (7.5s)
+- Formula: `fc = int(((duration * fps - 1) / 8) * 8 + 1)` → 177 for 7.5s@24fps
+- Audio is 7.5s (180 frames), video is 7.375s (177 frames) → 0.125s drift/clip
+- Fix: use `fps=24` filter in ffmpeg concat to stretch each clip to 7.5s
+- 24 clips × 7.5s = 180s (matches 180.28s song)
+
+**8-section prompt structure (from KupkaProd):**
+Forces material/texture words to prevent "plastic" skin look:
+1. shot_framing: camera angle, movement
+2. subject: who/what is in frame
+3. action: what's happening
+4. environment: background/setting
+5. lighting: key light direction, color temp
+6. color_materials: **material words** (matte, brushed aluminum, denim, grain)
+7. style_medium: cinematic photorealistic, 35mm film
+8. quality: sharp focus, skin pores, film grain
+
+Current prompts skip sections 4-6 → output looks plastic. Adding material
+words ("brushed aluminum microphone stand", "denim texture", "matte black")
+forces the model to render realistic surfaces.
+
 #### Remaining improvements (from plan_heatwave_music_video.md)
 - Lyric-literal b-roll (12 entries with Ideogram 4 refs)
 - Snap to 8n+1 frames (not 7.5s which is off-grid)
